@@ -2,7 +2,7 @@
     <img src="https://raw.githubusercontent.com/seezaara/jsis/main/doc/ico.svg"> 
 </p>
 
-# Jsis
+# Jsis javascritp framework
 easy fast realtime reactive javascritp framework, truly JS it IS ;)
  
 # how to use
