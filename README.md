@@ -1,5 +1,5 @@
 <p align="center" width="20%">
-    <img src="https://raw.githubusercontent.com/seezaara/jsis/main/doc/icon.svg"> 
+    <img src="https://raw.githubusercontent.com/seezaara/jsis/main/doc/ico.svg"> 
 </p>
 
 # Jsis
