@@ -2,10 +2,6 @@
     <img src="https://raw.githubusercontent.com/seezaara/jsis/main/doc/icon.svg"> 
 </p>
 
-<p align="center" width="100%">  
- <b><font size="6">RocketV2ray</font></b>
-</p> 
-
 # Jsis
 easy fast realtime reactive javascritp framework, truly JS it IS ;)
  
