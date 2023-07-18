@@ -50,8 +50,9 @@ simple sample
 <body>
     <pre id="myapp">
     <script>
-        var text = '<b>{"b"}old</b> not bold <b>bold</b>'
-        var promise = new Promise(function (res, reg) { setTimeout(function () { reg({ mess: 'ready', color: "green" }); }, 2000); })
+        var promise = new Promise(function (res, reg) { setTimeout(function () { res({ mess: 'ready', color: "green" }); }, 2000); })
+        var list = [1, 3, 4, 6]
+        var obj = { a: 1, b: 2 }
     </script>
                 text                 :<span>1 + 2</span>
                 textscript           :<span>{ 1 + 2 }</span>
@@ -97,7 +98,7 @@ simple sample
         </pre>
     <script>
         const myapp = document.querySelector("#myapp")
-        Jsis.create(myapp)
+        Jsis.create(myapp, { text: '<b>{"b"}old</b> not bold <b>bold</b>' })
     </script>
 </body>
 
