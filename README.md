@@ -9,7 +9,7 @@ easy fast realtime reactive javascritp framework, truly JS it IS ;)
 add this code to your html page
 
 ```html
-    <script src="https://raw.githubusercontent.com/seezaara/jsis/main/min.js"></script>  
+<script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
 ```
 
 # example
@@ -20,7 +20,7 @@ how to crate main html file
 <html>
 
 <head>
-    <script src="https://raw.githubusercontent.com/seezaara/jsis/main/min.js"></script>
+    <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
 </head>
 
 <body>
@@ -44,7 +44,7 @@ simple sample
 <html>
 
 <head>
-    <script src="https://raw.githubusercontent.com/seezaara/jsis/main/min.js"></script>
+    <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
 </head>
 
 <body>
