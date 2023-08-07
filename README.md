@@ -69,7 +69,7 @@ how to crate main html file
 
 </html>
 ```
-simple 
+text 
 
 ```html
 <span>your screen width is {window.screen.width}px and your screen height is {window.screen.height}px</span> 
