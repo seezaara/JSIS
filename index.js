@@ -8,12 +8,10 @@ window.Jsis = function () {
     // =========================
     var scopeGlobal = {}
     var scopeGlobalReactive = collectorProxy({})
-    
+
     // =========================
     var collectorCaller = []
-    var collectorData = []
     var collectorRecall = {}
-    var collectorRedata = {}
     var collectorCustomKeys
     var collectorKeyHolder = {}
     var collectorRemove = {}
@@ -114,7 +112,7 @@ window.Jsis = function () {
         }
     }
     // ============================================= execute js
-    function execScript(before, after, scope, prop) {
+    function execScript(before, after, scope) {
         try {
             return Function('_', '__', 'global', '_global', 'prop', 'with(_global){with(global){with(__){with(_){with(prop){' + before + ';return function(){ with(this){ return function(){' + after + '}}}}}}}}')(...scope);
         } catch (e) {
@@ -169,16 +167,15 @@ window.Jsis = function () {
         return true;
     };
     function opratorFor(element, attr, local_scope) {
-        var value = attr.value
+        element.parentNode.removeChild(element)
         execReactiveRemove(opratorForReactive, popAttr(element, attr), element, element.previousSibling, element.parentNode, local_scope)
-        element.remove()
     };
     function opratorForReactive(script, element, last, parent, local_scope) {
         if (last == null) last = parent.firstChild
         var nodes = []
         var keys = true;
         local_scope[4] = { ...local_scope[4] }
-        var loop = execLoop(script, local_scope, element).call(function (index, name) {
+        execLoop(script, local_scope, element).call(function (index, name) {
             if (keys) {
                 keys = false
                 execReactiveEnd();
@@ -215,23 +212,25 @@ window.Jsis = function () {
         if (!!execEval(popAttr(element, element.attributes[oprators.if]), local_scope, element).call(element)) {
             execReactiveEnd()
             parent.insertBefore(element, parent.childNodes[indexes[0]])
-
             render(element, local_scope)
             return element;
         } else {
-            //  ======================== else if oprator
+            execReactiveEnd()
+            // remove the if element for check else if and else
             elements[0].remove()
+            //  ======================== else if oprator
             for (let i = 0; i < elements.length; i++) {
                 var element = elements[i]
                 if (oprators.elseif in element.attributes) {
                     if (!!execEval(popAttr(element, element.attributes[oprators.elseif]), local_scope, element).call(element)) {
-                        execReactiveEnd()
+                        // execReactiveEnd()
                         render(element, local_scope)
                         parent.insertBefore(element, parent.childNodes[indexes[i + 1]])
                         render(element, local_scope)
                         return element;
                     }
-                }
+                } else
+                    break
             }
             //  ======================== else oprator 
             element = elements[elements.length - 1]
@@ -371,6 +370,8 @@ window.Jsis = function () {
                 for (var i in value) {
                     if (value[i])
                         element.classList.add(i)
+                    else
+                        element.classList.remove(i)
                 }
                 return null;
             } else if (name == "style") {
@@ -610,33 +611,31 @@ window.Jsis = function () {
         if (typeof key == "string" && collectorCaller != undefined) {
             if (!(key in collectorRecall)) {
                 collectorRecall[key] = []
-                collectorRedata[key] = []
             }
             if (collectorCustomKeys != undefined) {
                 if (!(key in collectorKeyHolder)) collectorKeyHolder[key] = []
                 collectorKeyHolder[key].push(collectorCustomKeys)
             }
             collectorRecall[key].push(collectorCaller)
-            collectorRedata[key].push(collectorData)
         }
         return target[key];
     }
     function collectorProxySetter(target, key, value) {
         target[key] = value;
         if (typeof key == "string" && key in collectorRecall) {
-            execReactiveCaller(collectorRecall[key], collectorRedata[key], collectorKeyHolder[key])
+            execReactiveCaller(collectorRecall[key], collectorKeyHolder[key])
         }
         return true;
     }
-    function execReactiveCaller(call, data, key) {
+    function execReactiveCaller(call, key) {
         if (key == undefined) {
-            for (let i = 0; i < data.length; i++) {
-                call[i](...data[i])
+            for (let i = 0; i < call.length; i++) {
+                call[i]()
             }
         } else {
-            for (let i = 0; i < data.length; i++) {
+            for (let i = 0; i < call.length; i++) {
                 execReactiveCallerRemove(key[i])
-                collectorRemove[key] = call[i](...data[i])
+                collectorRemove[key] = call[i]()
             }
         }
     };
@@ -655,22 +654,19 @@ window.Jsis = function () {
             }
         }
     };
-    function execReactive(reactive, ...arg) {
-        collectorCaller = reactive;
-        collectorData = arg;
-        reactive(...arg)
+    function execReactive(reactive) {
+        collectorCaller = reactive.bind.apply(reactive, arguments);
+        collectorCaller(true)
     };
-    function execReactiveRemove(reactive, ...arg) {
+    function execReactiveRemove(reactive) {  
         var kye = Math.floor(Math.random() * 10000000)
         collectorCustomKeys = kye
-        collectorCaller = reactive;
-        collectorData = arg;
-        collectorRemove[kye] = reactive(...arg, true)
+        collectorCaller = reactive.bind.apply(reactive, arguments);
+        collectorRemove[kye] = collectorCaller(true)
     };
     function execReactiveEnd() {
         if (collectorCaller != undefined) {
             collectorCaller = undefined;
-            collectorData = undefined;
             collectorCustomKeys = undefined;
         }
     };
@@ -717,7 +713,7 @@ window.Jsis = function () {
         return request(url).then(execRequire)
     }
     return {
-        create: function (element, prop) {
+        create: function (element, prop = {}) {
             render(element, [
                 {},
                 collectorProxy({}),
