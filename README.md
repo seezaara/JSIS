@@ -9,7 +9,7 @@ easy fast realtime reactive javascritp framework
 
 - it's realtime and reactive
 - it's very fast and optimized
-- it's very compact (30kb)
+- it's very compact and lite (10kb)
 - it's very easy to learn 
 - it's very fast to write
 - you can use other framework and library and vanilla JS
