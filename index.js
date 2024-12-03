@@ -1,3 +1,4 @@
+
 window.Jsis = function () {
     window.request = request
     window.require = require
@@ -167,10 +168,13 @@ window.Jsis = function () {
         return true;
     };
     function opratorFor(element, attr, local_scope) {
-        element.parentNode.removeChild(element)
-        execReactiveRemove(opratorForReactive, popAttr(element, attr), element, element.previousSibling, element.parentNode, local_scope)
+        var parent = element.parentNode
+        var last = element.previousSibling
+        parent.removeChild(element)
+        execReactiveRemove(opratorForReactive, popAttr(element, attr), element, last, parent, local_scope)
     };
     function opratorForReactive(script, element, last, parent, local_scope) {
+
         if (last == null) last = parent.firstChild
         var nodes = []
         var keys = true;
@@ -401,7 +405,7 @@ window.Jsis = function () {
         for (let i = 0; i < nodes.length; i++) {
             if (nodes[i].nodeType == 3 && nodes[i].data.trim() != "") {
                 while ((datajs = config.text_selector.exec(nodes[i].data)) !== null) {
-                    const range = document.createRange();
+                    var range = document.createRange();
                     range.setStart(nodes[i], datajs.index);
                     range.setEnd(nodes[i], config.text_selector.lastIndex);
                     elemetnRange.unshift(range);
@@ -658,7 +662,7 @@ window.Jsis = function () {
         collectorCaller = reactive.bind.apply(reactive, arguments);
         collectorCaller(true)
     };
-    function execReactiveRemove(reactive) {  
+    function execReactiveRemove(reactive) {
         var kye = Math.floor(Math.random() * 10000000)
         collectorCustomKeys = kye
         collectorCaller = reactive.bind.apply(reactive, arguments);
