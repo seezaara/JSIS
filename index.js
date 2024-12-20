@@ -20,7 +20,7 @@ window.Jsis = function () {
     var config = {
         selector: "*:not(" +
             "style," +
-            "script," +
+            "script:not([type='jsis' i])" +
             "[\\:if] *," +
             "[\\:for] *," +
             "[\\:if]+[\\:elseif],[\\:elseif]+[\\:elseif],[\\:elseif] *," +
@@ -39,6 +39,7 @@ window.Jsis = function () {
         this_test: /[^0-9a-zA-Z_$](this)[^0-9a-zA-Z_$]/,
         test_loop: /((let|var|const) )? *(([0-9a-zA-Z_$]+)[0-9a-zA-Z_$\[\].'"`]*) *(=|in|of)/,
         comp_name: "COMP",
+        script_name: "SCRIPT",
         fake: function () { return "" }
     };
     var oprators = {
@@ -71,6 +72,8 @@ window.Jsis = function () {
     function renderSingle(element, local_scope) {
         if (element.nodeName == config.comp_name)
             return renderComp(element, local_scope);
+        if (element.nodeName == config.script_name)
+            return renderScript(element, local_scope);
         var attrs = element.getAttributeNames().join("")
         if (attrs.includes(config.attr)) {
             if (!renderOprator(element, local_scope))
@@ -134,7 +137,10 @@ window.Jsis = function () {
             }
         })
     }
-    // ============================================ oprators 
+    // ============================================ renders 
+    function renderScript(element, local_scope) {
+        return execScript(element.innerText, '', local_scope)([]);
+    };
     function popAttr(element, attr) {
         element.removeAttributeNode(attr)
         return attr.value
@@ -532,7 +538,7 @@ window.Jsis = function () {
         }
     }
 
-    function renderCompId(fg, local_scope) {
+    function renderCompId(fg) {
         var hold = fg.querySelectorAll("[id]")
         var elements = {}
         for (let i = 0; i < hold.length; i++) {
@@ -570,7 +576,6 @@ window.Jsis = function () {
     }
 
     function getCode(end, max) {
-        var keycount = 0
         var coutn = 0
         var before_load = []
         var after_load = []
@@ -716,15 +721,29 @@ window.Jsis = function () {
     function require(url, data = {}) {
         return request(url).then(execRequire)
     }
-    return {
-        create: function (element, prop = {}) {
-            render(element, [
-                {},
-                collectorProxy({}),
-                scopeGlobal,
-                scopeGlobalReactive,
-                prop
-            ])
+    function create(element, prop) { 
+        if (prop == undefined && !(element instanceof Element)) {
+            prop = element
+            element = document.querySelector("*[JSIS]")
+            if (!element)
+                return
         }
+        if (!element)
+            return console.error('Cannot find "JSIS" element in document');
+        render(element, [
+            {},
+            collectorProxy({}),
+            scopeGlobal,
+            scopeGlobalReactive,
+            prop || {}
+        ])
+    }
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        create();
+    } else {
+        document.addEventListener("DOMContentLoaded", function () { create() });
+    }
+    return {
+        create: create
     }
 }()
