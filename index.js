@@ -72,7 +72,7 @@ window.Jsis = function () {
     function renderSingle(element, local_scope) {
         if (element.nodeName == config.comp_name)
             return renderComp(element, local_scope);
-        if (element.nodeName == config.script_name)
+        if (element.nodeName == config.script_name && element.type.toUpperCase() == "JSIS")
             return renderScript(element, local_scope);
         var attrs = element.getAttributeNames().join("")
         if (attrs.includes(config.attr)) {
