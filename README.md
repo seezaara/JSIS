@@ -2,175 +2,288 @@
     <img src="https://raw.githubusercontent.com/seezaara/jsis/main/doc/ico.svg"> 
 </p>
 
-# what is Jsis ?
-easy fast realtime reactive javascritp framework
+# What is Jsis?
+Jsis is an easy, fast, and realtime reactive JavaScript framework.
 
-# why you shuld use Jsis ?
+# Why Should You Use Jsis?
 
-- it's realtime and reactive
-- it's very fast and optimized
-- it's very compact and lite (10kb)
-- it's very easy to learn 
-- it's very fast to write
-- you can use other framework and library and vanilla JS
+- **Realtime and Reactive**: Automatically updates your UI based on data changes.
+- **Optimized Performance**: Very fast and lightweight, only 10KB.
+- **Compact and Easy to Learn**: Simplified syntax for rapid development.
+- **Interoperable**: Works with other frameworks, libraries, and vanilla JavaScript.
 
-** Indeed JS it IS ;)**
-  
-# how to use
-add this code to your html page
+**Indeed, JS it IS!**
+
+# How to Use
+Add the following script to your HTML page:
 
 ```html
 <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
 ```
 
-**native varables:**
+### Native Variables:
 
-- **_**: non reactive object in local component
-- **__**: reactive object in local component
-- **global**: non reactive global (in all components) 
-- **_global**: reactive glbal object (in all components)
-- **prop**: non reactive object prop input of component
+- **_**: Non-reactive object in the local component.
+- **__**: Reactive object in the local component.
+- **_$**: Non-reactive global object shared across components.
+- **__$**: Reactive global object shared across components.
+- **prop**: Non-reactive input props passed to the component.
 
+### Native Attributes:
 
-**native attribute:**
+- **:if**: Removes the element if the value is false (type: boolean).
+- **:elseif**: Used after a `:if`. Checks the value if `:if` is false (type: boolean).
+- **:else**: Used after a `:if` or `:elseif` if they are false (type: none).
+- **:wait**: Waits for a Promise. Removes the element after resolve or reject (type: Promise).
+- **:then**: Used after `:wait` to display content on resolve (type: none).
+- **:catch**: Used after `:then` to display content on reject (type: none).
+- **:for**: Loops and repeats the element. Value must follow JavaScript loop syntax (type: for).
+- **:class**: Reactive class binding (type: object, string).
+- **:style**: Reactive style binding (type: object, string).
+- **:global**: Used in components to limit variable sharing with the parent (type: none).
+- **:prop**: Passes data to the component’s `prop` variable (type: any).
 
-- **:if**= if the value was false delete element. type: boolean
-- **:elseif**= This attribute must be used in an element that is preceded by the element that contains :if attribute. if the :if attribute contains false value then check :elseif value. type: boolean 
-- **:else**= This attribute must be used in an element that is preceded by the element that contains :if or :elseif attribute. type: none 
-- **:wait**= the value contains the Promise async object. delete after emitted resolve or reject. type: Promise
-- **:then**= this attribute must be used in an element that is preceded by the element that contains :wait attribute. and show after promise emitted resolve. type: none 
-- **:catch**= this attribute must be used in an element that is preceded by the element that contains :then attribute. and show after promise emitted reject. type: none 
-- **:for**= this attribute repeat the element and value must follow the syntax of javascript for operator. type: for
-- **:class**= this attribute use for reactive calss. type: object,string
-- **:style**= this attribute use for reactive calss. type: object,string
-- **:scoped**= this attribute just use in comp element. if component not contains this attribute, all of native variable of parent component share with the component. type: none
-- **:prop**= this attribute just use in comp element. any data use in this attribute value, transfer to the "prop" variable of the component. type: any
+# Examples
 
-# example
-how to crate main html file
+### Main HTML File
 
 ```html
 <!DOCTYPE html>
 <html>
-
 <head>
     <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
 </head>
-
 <body>
     <div id="myapp">
         ... your code ...
     </div>
     <script>
-        const myapp = document.querySelector("#myapp")
-        Jsis.create(myapp)
+        const myapp = document.querySelector("#myapp");
+        Jsis.create(myapp);
     </script>
 </body>
-
 </html>
 ```
-text 
 
+---
+
+### Dynamic Text (Comparison)
+
+**Jsis:**
 ```html
-<span>your screen width is {window.screen.width}px and your screen height is {window.screen.height}px</span> 
+<span>Your screen width is {window.screen.width}px and height is {window.screen.height}px</span>
 ```
 
-simple reactive 
-
+**Vue:**
 ```html
-<span :load="__.count = 0" :onclick="count++">you {count} Times clicked me</span> 
+<template>
+  <span>Your screen width is {{ screenWidth }}px and height is {{ screenHeight }}px</span>
+</template>
+<script>
+export default {
+  data() {
+    return {
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height
+    };
+  }
+};
+</script>
 ```
-if
 
-```html
-<span :load="__.toggle = true" :onclick="toggle = !toggle">click to  the box</span>
-<br> 
-<span :if="toggle">open</span> 
-<span :else>close</span> 
+**React:**
+```jsx
+import React from 'react';
+export default function App() {
+  const [screenWidth, setScreenWidth] = React.useState(window.innerWidth);
+  const [screenHeight, setScreenHeight] = React.useState(window.innerHeight);
+
+  return (
+    <span>Your screen width is {screenWidth}px and height is {screenHeight}px</span>
+  );
+}
 ```
 
-promise await/async
+---
 
+### Simple Reactive Example (Comparison)
+
+**Jsis:**
 ```html
-<button :load="__.link = fetch('https://ipinfo.io/json')" :onclick="link = fetch('https://ipinfo.io/json')">refresh</button>
-<br>
-<span :wait="link">please wait</span>
-<span :then="req">
-    <span :wait="req.json()">{"wait for parse"}</span>
-    <span :then="data">
-        your ip is {data.ip} and you location is {data.city} {data.region} {data.country}
+<span :load="__.count = 0" :onclick="count++">You clicked me {count} times</span>
+```
+
+**Vue:**
+```html
+<template>
+  <span @click="count++">You clicked me {{ count }} times</span>
+</template>
+<script>
+export default {
+  data() {
+    return {
+      count: 0
+    };
+  }
+};
+</script>
+```
+
+**React:**
+```jsx
+import React, { useState } from 'react';
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <span onClick={() => setCount(count + 1)}>
+      You clicked me {count} times
     </span>
-    <span :catch="err">{console.log(err) , "error cannot parse json"}</span>
+  );
+}
+```
+
+---
+
+### Conditional Rendering (Comparison)
+
+**Jsis:**
+```html
+<span :load="__.toggle = true" :onclick="toggle = !toggle">Click to toggle the box</span>
+<br>
+<span :if="toggle">Open</span>
+<span :else>Close</span>
+```
+
+**Vue:**
+```html
+<template>
+  <div>
+    <span @click="toggle = !toggle">Click to toggle the box</span>
+    <br>
+    <span v-if="toggle">Open</span>
+    <span v-else>Close</span>
+  </div>
+</template>
+<script>
+export default {
+  data() {
+    return {
+      toggle: true
+    };
+  }
+};
+</script>
+```
+
+**React:**
+```jsx
+import React, { useState } from 'react';
+export default function App() {
+  const [toggle, setToggle] = useState(true);
+
+  return (
+    <div>
+      <span onClick={() => setToggle(!toggle)}>Click to toggle the box</span>
+      <br />
+      {toggle ? <span>Open</span> : <span>Close</span>}
+    </div>
+  );
+}
+```
+
+---
+
+### Promise Handling (Comparison)
+
+**Jsis:**
+```html
+<button :load="__.link = fetch('https://ipinfo.io/json')" :onclick="link = fetch('https://ipinfo.io/json')">Refresh</button>
+<br>
+<span :wait="link">Please wait...</span>
+<span :then="req">
+    <span :wait="req.json()">Parsing...</span>
+    <span :then="data">
+        Your IP is {data.ip}, located in {data.city}, {data.region}, {data.country}.
+    </span>
+    <span :catch="err">Error parsing JSON</span>
 </span>
-<span :catch="err">{console.log(err) , "error cannot receive data"}</span>
+<span :catch="err">Error fetching data</span>
 ```
 
-atterbiute / class 
-
+**Vue:**
 ```html
-<style>
-    .tablink {
-        background-color: #555;
-        color: white;
-        float: left;
-        border: none;
-        outline: none;
-        cursor: pointer;
-        padding: 14px 16px;
-        font-size: 17px;
-        width: 25%;
+<template>
+  <div>
+    <button @click="refresh">Refresh</button>
+    <p v-if="loading">Please wait...</p>
+    <p v-else-if="error">{{ error }}</p>
+    <p v-else>Your IP is {{ data.ip }}, located in {{ data.city }}, {{ data.region }}, {{ data.country }}</p>
+  </div>
+</template>
+<script>
+export default {
+  data() {
+    return {
+      data: null,
+      loading: false,
+      error: null
+    };
+  },
+  methods: {
+    async refresh() {
+      this.loading = true;
+      try {
+        const response = await fetch('https://ipinfo.io/json');
+        this.data = await response.json();
+      } catch (err) {
+        this.error = 'Error fetching data';
+      } finally {
+        this.loading = false;
+      }
     }
-
-    .tabcontent {
-        color: white;
-        display: none;
-        padding: 100px 20px;
-        height: 100%;
-        background-color: green;
-    }
-
-    .tablink.active {
-        background-color: green;
-    }
-
-    .tabcontent.active {
-        display: block;
-    }
-</style>
-<button class="tablink" :onclick="__.tab = 'Home'">Home</button>
-<button class="tablink" :onclick="__.tab = 'News'">News</button>
-<button class="tablink" :onclick="__.tab = 'Contact'">Contact</button>
-<button class="tablink" :onclick="__.tab = 'About'">About</button>
-<div :class="__.tab == 'Home' ? 'active tabcontent' : 'tabcontent'">
-    <h3>Home</h3>
-    <p>Home is where the heart is..</p>
-</div>
-<div :class="{active:__.tab == 'News'}" class="tabcontent">
-    <h3>News</h3>
-    <p>Some news this fine day!</p>
-</div>
-<div :class="{active:__.tab == 'Contact'}" ct" class="tabcontent">
-    <h3>Contact</h3>
-    <p>Get in touch, or swing by for a cup of coffee.</p>
-</div>
-<div :class="{active:__.tab == 'About'}"" class=" tabcontent">
-    <h3>About</h3>
-    <p>Who we are and what we do.</p>
-</div>
+  }
+};
+</script>
 ```
 
-events
+**React:**
+```jsx
+import React, { useState } from 'react';
+export default function App() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-```html 
-<span :onclick="alert('clicked !')" :load="alert('please click on text: '+this.innerText)">click me!</span>
-```
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('https://ipinfo.io/json');
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      setError('Error fetching data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-component
-
-```html
-<comp :src="'./comp.html'" :prop="{id:12}" :scoped></comp> 
-```
-
+  return (
+    <div>
+      <button onClick={refresh}>Refresh</button>
+      {loading ? (
+        <p>Please wait...</p>
+      ) : error ? (
+        <p>{error}</p>
+      ) : (
+        <p>
+          Your IP is {data.ip}, located in {data.city}, {data.region}, {data.country}.
+        </p>
+      )}
+    </div>
+  );
+}
+``` 
 all in one example
 
 ```html
@@ -231,7 +344,7 @@ all in one example
                 onload               :<span :load="console.log(this)">attributes3</span> 
                 comp1                :<comp src="./comp.html"></comp>
                 comp2                :<comp :src="'./comp.html'" :scoped></comp>
-                comp3                :<comp :src="'./comp.html'" :prop="{id:12}" :scoped></comp>
+                comp3                :<comp :src="'./comp.html'" :prop="{id:12}" :global></comp>
         </pre>
     <script>
         const myapp = document.querySelector("#myapp")
