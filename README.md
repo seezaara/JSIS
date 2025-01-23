@@ -103,9 +103,67 @@ export default function App() {
   );
 }
 ```
-
+ 
 ---
 
+## Dynamic Text (Comparison with HTML Rendering)
+ 
+**Jsis:**
+```html
+<script>
+  var text = '<b>{"b"}old</b> not bold <b>bold</b>';
+</script>
+<!-- This will escape HTML, rendering it as Safe plain text -->
+<code>{ text }</code>
+<!-- Embedding HTML -->
+<code>${ text }</code>
+<!-- Displaying the text with an explanation -->
+<code>this is the code : ${ text }</code>
+```
+
+**Vue:**
+```html
+<template>
+  <!-- This will escape HTML, rendering it as plain text -->
+  <code>{{ text }}</code>
+  <!-- To render HTML, you must use v-html (not reactive by default) -->
+  <code v-html="text"></code>
+  <!-- Vue cannot mix explanations with HTML embedding without v-html -->
+  <code>This is the code: <span v-html="text"></span></code>
+</template>
+<script>
+export default {
+  data() {
+    return {
+      text: '<b>{"b"}old</b> not bold <b>bold</b>',
+    };
+  },
+};
+</script>
+```
+
+**React:**
+```jsx
+import React from 'react';
+
+export default function App() {
+  const text = '<b>{"b"}old</b> not bold <b>bold</b>';
+  return (
+    <>
+      {/* Escaped HTML to render as plain text */}
+      <code>{'<b>{"b"}old</b> not bold <b>bold</b>'}</code>
+      {/* Rendering raw HTML - React requires dangerouslySetInnerHTML */}
+      <code dangerouslySetInnerHTML={{ __html: text }}></code>
+      {/* Displaying the text with an explanation */}
+      <code>
+        This is the code: <span dangerouslySetInnerHTML={{ __html: text }}></span>
+      </code>
+    </>
+  );
+}
+```
+
+---
 ### Simple Reactive Example (Comparison)
 
 **Jsis:**
@@ -283,7 +341,157 @@ export default function App() {
     </div>
   );
 }
-``` 
+```
+
+## Attributes/Class/Style Object
+
+**Jsis:**
+```html
+<span class="green" :class="{blue: true, red: false}">Styled with Jsis</span>
+<span :style="{background: 'yellow', color: 'black'}">Dynamic styling</span>
+<span :id="'my-id'">Dynamic attributes</span>
+```
+
+**Vue:**
+```html
+<template>
+  <span :class="{ blue: true, red: false }">Styled with Vue</span>
+  <span :style="{ background: 'yellow', color: 'black' }">Dynamic styling</span>
+  <span :id="'my-id'">Dynamic attributes</span>
+</template>
+```
+
+**React:**
+```jsx
+import React from 'react';
+export default function App() {
+  return (
+    <>
+      <span className="green" style={{ background: 'yellow', color: 'black' }}>
+        Styled with React
+      </span>
+      <span id="my-id">Dynamic attributes</span>
+    </>
+  );
+}
+```
+
+---
+
+## Events
+
+**Jsis:**
+```html
+<button :onclick="alert('Button clicked!')">Click Me</button>
+<span :load="console.log('Loaded')">Loaded element</span>
+```
+
+**Vue:**
+```html
+<template>
+  <button @click="handleClick">Click Me</button>
+</template>
+<script>
+export default {
+  methods: {
+    handleClick() {
+      alert('Button clicked!');
+    }
+  }
+};
+</script>
+```
+
+**React:**
+```jsx
+import React from 'react';
+export default function App() {
+  const handleClick = () => alert('Button clicked!');
+  return <button onClick={handleClick}>Click Me</button>;
+}
+```
+
+---
+
+## Component
+
+**Jsis:**
+```html
+<comp src="./mycomponent.html"></comp>
+<comp :src="'./mycomponent.html'" :prop="{key: 'value'}"></comp>
+```
+
+**Vue:**
+```html
+<template>
+  <MyComponent :prop="value" />
+</template>
+<script>
+import MyComponent from './MyComponent.vue';
+export default {
+  components: { MyComponent },
+  data() {
+    return { value: { key: 'value' } };
+  }
+};
+</script>
+```
+
+**React:**
+```jsx
+import React from 'react';
+import MyComponent from './MyComponent';
+export default function App() {
+  return <MyComponent prop={{ key: 'value' }} />;
+}
+```
+
+---
+
+## For Loops (Standard, Of, and In)
+
+**Jsis:**
+```html
+<ul>
+  <li :for="var i = 0; i < 5; i++">Index: {i}</li>
+  <li :for="var item of [1, 2, 3]">Item: {item}</li>
+  <li :for="var key in {a: 1, b: 2}">Key: {key}</li>
+</ul>
+```
+
+**Vue:**
+```html
+<template>
+  <ul>
+    <li v-for="i in 5" :key="i">Index: {{ i - 1 }}</li>
+    <li v-for="item in [1, 2, 3]" :key="item">Item: {{ item }}</li>
+    <li v-for="(value, key) in { a: 1, b: 2 }" :key="key">Key: {{ key }}</li>
+  </ul>
+</template>
+```
+
+**React:**
+```jsx
+import React from 'react';
+export default function App() {
+  const items = [1, 2, 3];
+  const obj = { a: 1, b: 2 };
+  return (
+    <ul>
+      {[...Array(5)].map((_, i) => (
+        <li key={i}>Index: {i}</li>
+      ))}
+      {items.map((item) => (
+        <li key={item}>Item: {item}</li>
+      ))}
+      {Object.keys(obj).map((key) => (
+        <li key={key}>Key: {key}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
 all in one example
 
 ```html
