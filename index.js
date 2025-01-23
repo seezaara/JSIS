@@ -14,7 +14,7 @@ window.Jsis = function () {
     var collectorCaller = []
     var collectorRecall = {}
     var collectorCustomKeys
-    var collectorKeyHolder = {}
+    var collectorKeyHolder = new Map();
     var collectorRemove = {}
 
     var config = {
@@ -88,7 +88,7 @@ window.Jsis = function () {
     // ============================================= execute raw js 
     function execEval(script, scope, element) {
         try {
-            return Function('_', '__', 'global', '_global', 'prop', 'with(_global){with(global){with(__){with(_){with(prop){return function(){"use strict";return (' + script + ') }}}}}}')(...scope);
+            return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){return function(){"use strict";return (' + script + ') }}}}}}')(...scope);
         } catch (e) {
             console.error(e.message, "at:'", script, "'", element);
             return config.fake
@@ -96,7 +96,7 @@ window.Jsis = function () {
     }
     function execEvent(script, scope, element) {
         try {
-            return Function('_', '__', 'global', '_global', 'prop', 'with(_global){with(global){with(__){with(_){with(prop){return function(event){"use strict";return (' + script + ') }}}}}}')(...scope);
+            return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){return function(event){"use strict";return (' + script + ') }}}}}}')(...scope);
         } catch (e) {
             console.error(e.message, "at:'", script, "'", element);
             return config.fake
@@ -109,7 +109,7 @@ window.Jsis = function () {
         }
         try {
             var index = script.match(config.test_loop)[4]
-            return Function('_', '__', 'global', '_global', 'prop', 'with(_global){with(global){with(__){with(_){with(prop){return function(){"use strict";for(' + script + '){this(' + index + ',"' + index + '")} }}}}}}')(...scope)
+            return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){return function(){"use strict";for(' + script + '){this(' + index + ',"' + index + '")} }}}}}}')(...scope)
         } catch (e) {
             console.error(e.message, "at:'", script, "'", element);
             return config.fake
@@ -118,7 +118,7 @@ window.Jsis = function () {
     // ============================================= execute js
     function execScript(before, after, scope) {
         try {
-            return Function('_', '__', 'global', '_global', 'prop', 'with(_global){with(global){with(__){with(_){with(prop){' + before + ';return function(){ with(this){ return function(){' + after + '}}}}}}}}')(...scope);
+            return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){' + before + ';return function(){ with(this){ return function(){' + after + '}}}}}}}}')(...scope);
         } catch (e) {
             console.error(e);
             return config.fake
@@ -184,17 +184,20 @@ window.Jsis = function () {
         if (last == null) last = parent.firstChild
         var nodes = []
         var keys = true;
-        local_scope[4] = { ...local_scope[4] }
         execLoop(script, local_scope, element).call(function (index, name) {
             if (keys) {
                 keys = false
                 execReactiveEnd();
             }
             last = parent.insertBefore(element.cloneNode(true), last.nextSibling)
-            local_scope[4][name] = index;
+            const scope = [...local_scope]
+            scope[4] = { ...scope[4] }
+            scope[4][name] = index;
+
             nodes.push(last)
-            render(last, local_scope)
+            render(last, scope)
         })
+
         return nodes;
     };
     function opratorIf(element, attr, local_scope) {
@@ -278,6 +281,7 @@ window.Jsis = function () {
             parent.removeChild(then_el)
         }
         if (catch_el != undefined) {
+
             catch_el = catch_el.ownerElement
             indexes.catch = getIndex(parentnodes, catch_el)
             parent.removeChild(catch_el)
@@ -369,10 +373,13 @@ window.Jsis = function () {
         return false;
     };
     function coreAttrReactive(script, name, element, local_scope) {
+        if (!element.isConnected)
+            return true
         var check = checkAttr(element, name, execEval(script, local_scope, element).call(element))
         execReactiveEnd()
         if (check != null)
             element.setAttribute(name, check);
+
     };
     function checkAttr(element, name, value) {
         if (typeof value == "object") {
@@ -403,11 +410,11 @@ window.Jsis = function () {
     }
 
     // =================================================================== text
-    function renderText(parent, local_scope) {
+    function renderText(element, local_scope) {
         var elemetnRange = []
-        var elemetnCode = []
+        var elemetnScript = []
         var elemetnIsHtml = []
-        var nodes = parent.childNodes;
+        var nodes = element.childNodes;
         for (let i = 0; i < nodes.length; i++) {
             if (nodes[i].nodeType == 3 && nodes[i].data.trim() != "") {
                 while ((datajs = config.text_selector.exec(nodes[i].data)) !== null) {
@@ -415,17 +422,18 @@ window.Jsis = function () {
                     range.setStart(nodes[i], datajs.index);
                     range.setEnd(nodes[i], config.text_selector.lastIndex);
                     elemetnRange.unshift(range);
-                    elemetnCode.unshift(datajs[1] || datajs[2]);
+                    elemetnScript.unshift(datajs[1] || datajs[2]);
                     elemetnIsHtml.unshift(datajs[0][0] == "$");
                 }
             };
         }
         for (var i in elemetnRange) {
-            execReactive(renderTextReactive, elemetnCode[i], elemetnRange[i], elemetnIsHtml[i], local_scope)
+            execReactive(renderTextReactive, element, elemetnScript[i], elemetnRange[i], elemetnIsHtml[i], local_scope)
         }
     };
-    function renderTextReactive(script, range, is_html, local_scope) {
-        var element = (range.commonAncestorContainer.nodeName == "#text" ? range.commonAncestorContainer.parentNode : range.commonAncestorContainer)
+    function renderTextReactive(element, script, range, is_html, local_scope) {
+        if (!element.isConnected)
+            return true
         range.deleteContents();
         var text = execEval(script, local_scope, element).call(element)
         execReactiveEnd()
@@ -444,7 +452,7 @@ window.Jsis = function () {
         var reactive_src = element.getAttribute(config.attr + "src")
         var src = element.getAttribute("src")
         var prop = element.getAttribute(config.attr + "prop")
-        var scoped = element.getAttribute(config.attr + "scoped") == null
+        var scoped = element.getAttribute(config.attr + "global") != null
         element.removeAttribute("src")
         element.removeAttribute(config.attr + "src")
         element.removeAttribute(config.attr + "prop")
@@ -482,8 +490,8 @@ window.Jsis = function () {
             local_scope = [
                 {},                   // _
                 collectorProxy({}),     // __
-                scopeGlobal,            // global
-                scopeGlobalReactive,    // _global 
+                scopeGlobal,            // _$
+                scopeGlobalReactive,    // __$ 
                 prop,                   // prop
             ]
         } else {
@@ -616,53 +624,67 @@ window.Jsis = function () {
             set: collectorProxySetter
         });
     };
-    function collectorProxyGetter(target, key, reciver) {
-        if (typeof key == "string" && collectorCaller != undefined) {
-            if (!(key in collectorRecall)) {
-                collectorRecall[key] = []
+
+    function collectorProxyGetter(target, key) {
+        if (typeof key === "string" && collectorCaller !== undefined) {
+            if (!(key in collectorRecall)) collectorRecall[key] = [];
+            if (collectorCustomKeys !== undefined) {
+                if (!collectorKeyHolder.has(key)) collectorKeyHolder.set(key, new Map());
+                const keyHolderMap = collectorKeyHolder.get(key);
+                keyHolderMap.set(collectorCaller, collectorCustomKeys);
             }
-            if (collectorCustomKeys != undefined) {
-                if (!(key in collectorKeyHolder)) collectorKeyHolder[key] = []
-                collectorKeyHolder[key].push(collectorCustomKeys)
-            }
-            collectorRecall[key].push(collectorCaller)
+            collectorRecall[key].push(collectorCaller);
         }
         return target[key];
     }
+
     function collectorProxySetter(target, key, value) {
         target[key] = value;
-        if (typeof key == "string" && key in collectorRecall) {
-            execReactiveCaller(collectorRecall[key], collectorKeyHolder[key])
+        if (typeof key === "string" && key in collectorRecall) {
+            execReactiveCaller(collectorRecall[key], collectorKeyHolder.get(key));
         }
         return true;
     }
-    function execReactiveCaller(call, key) {
-        if (key == undefined) {
+
+    function execReactiveCaller(call, keyHolderMap) {
+        if (!keyHolderMap) {
             for (let i = 0; i < call.length; i++) {
-                call[i]()
+                if (call[i]()) {
+                    call.splice(i, 1); // Remove the element at index i
+                    i--; // Adjust the index to avoid skipping the next element
+                }
             }
         } else {
             for (let i = 0; i < call.length; i++) {
-                execReactiveCallerRemove(key[i])
-                collectorRemove[key] = call[i]()
-            }
-        }
-    };
-    function execReactiveCallerRemove(key) {
-        var node = collectorRemove[key]
-        if (node != undefined) {
-            if (typeof node == 'object' && node.length) {
-                for (let i = 0; i < node.length; i++) {
-                    if (node[i].remove)
-                        node[i].remove()
+                const currentCaller = call[i];
+                const customKeys = keyHolderMap.get(currentCaller); // Use function as key in Map
+                if (customKeys) {
+                    execReactiveCallerRemove(collectorRemove[customKeys]);
+                    collectorRemove[customKeys] = currentCaller();
+                } else {
+                    if (currentCaller()) {
+                        call.splice(i, 1); // Remove the element at index i
+                        i--; // Adjust the index to account for the removed element
+                    }
                 }
-            } else if (typeof node == 'function') {
-                node()
-            } else {
-                node.remove()
             }
         }
+    }
+    function execReactiveCallerRemove(node) {
+        if (!node) return;
+        if (typeof node == 'object' && node.length) {
+            for (let i = 0; i < node.length; i++) {
+                if (node[i].remove)
+                    node[i].remove()
+            }
+        } else if (typeof node == 'function') {
+            node()
+        } else {
+            node.remove()
+        }
     };
+
+    // ========= 
     function execReactive(reactive) {
         collectorCaller = reactive.bind.apply(reactive, arguments);
         collectorCaller(true)
@@ -672,6 +694,7 @@ window.Jsis = function () {
         collectorCustomKeys = kye
         collectorCaller = reactive.bind.apply(reactive, arguments);
         collectorRemove[kye] = collectorCaller(true)
+
     };
     function execReactiveEnd() {
         if (collectorCaller != undefined) {
@@ -684,15 +707,15 @@ window.Jsis = function () {
         if (opt == undefined) {
             opt = {}
         }
-        if (!opt.method)
-            opt.method = "post"
         if (data == undefined) {
             if (!opt.method)
                 opt.method = 'get'
         } else if (typeof data == "object" && !(data instanceof FormData)) {
             data = new URLSearchParams(data)
         }
-        return new Promise(function (res, rej) {
+        if (!opt.method)
+            opt.method = "post"
+        return new Promise(function (res) {
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function () {
                 if (this.readyState == 4) {
@@ -718,10 +741,10 @@ window.Jsis = function () {
             xhttp.send(data);
         })
     }
-    function require(url, data = {}) {
+    function require(url) {
         return request(url).then(execRequire)
     }
-    function create(element, prop) { 
+    function create(element, prop) {
         if (prop == undefined && !(element instanceof Element)) {
             prop = element
             element = document.querySelector("*[JSIS]")
