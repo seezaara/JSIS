@@ -3,7 +3,7 @@
 </p>
 
 # What is Jsis?
-Jsis is an easy, fast, and realtime reactive JavaScript framework.
+JSIS is a fast, reactive JavaScript framework designed for developers who want the simplicity of vanilla JS without the hassle of manually managing the DOM and templates. It works with just HTML, requiring minimal separate scripts, making it lightweight and easy to use.
 
 # Why Should You Use Jsis?
 
