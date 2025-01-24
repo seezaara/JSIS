@@ -18,7 +18,7 @@ JSIS is a fast performance, reactive JavaScript framework designed for developer
 Add the following script to your HTML page:
 
 ```html
-<script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
+<script src="https://raw.githubusercontent.com/seezaara/JSIS/main/min.js"></script>
 ```
 
 ### Native Variables:
@@ -51,7 +51,7 @@ Add the following script to your HTML page:
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
+    <script src="https://raw.githubusercontent.com/seezaara/JSIS/main/min.js"></script>
 </head>
 <body>
     <div id="myapp">
@@ -499,7 +499,7 @@ all in one example
 <html>
 
 <head>
-    <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
+    <script src="https://raw.githubusercontent.com/seezaara/JSIS/main/min.js"></script>
 </head>
 
 <body>
