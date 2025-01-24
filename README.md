@@ -54,6 +54,21 @@ Add the following script to your HTML page:
     <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
 </head>
 <body>
+    <div id="myapp" JSIS>
+        ... your code ...
+    </div> 
+</body>
+</html>
+```
+or 
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://github.com/seezaara/jsis/releases/latest/download/jsis.min.js"></script>
+</head>
+<body>
     <div id="myapp">
         ... your code ...
     </div>
@@ -64,7 +79,6 @@ Add the following script to your HTML page:
 </body>
 </html>
 ```
-
 ---
 
 ### Dynamic Text (Comparison)
