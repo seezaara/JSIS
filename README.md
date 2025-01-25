@@ -397,6 +397,9 @@ export default function App() {
 **Jsis:**
 ```html
 <button :onclick="alert('Button clicked!')">Click Me</button>
+or
+<button @click="alert('Button clicked!')">Click Me</button>
+
 <span :load="console.log('Loaded')">Loaded element</span>
 ```
 
