@@ -20,7 +20,7 @@ window.Jsis = function () {
     var config = {
         selector: "*:not(" +
             "style," +
-            "script:not([type='jsis' i])" +
+            "script:not([type='jsis' i])," +
             "[\\:if] *," +
             "[\\:for] *," +
             "[\\:if]+[\\:elseif],[\\:elseif]+[\\:elseif],[\\:elseif] *," +
@@ -45,6 +45,7 @@ window.Jsis = function () {
     var oprators = {
         for: config.attr + "for",
         if: config.attr + "if",
+        forif: config.attr + "forif",
         elseif: config.attr + "elseif",
         else: config.attr + "else",
 
@@ -142,6 +143,7 @@ window.Jsis = function () {
         return execScript(element.innerText, '', local_scope)([]);
     };
     function popAttr(element, attr) {
+
         element.removeAttributeNode(attr)
         return attr.value
     }
@@ -149,12 +151,16 @@ window.Jsis = function () {
         return Array.prototype.indexOf.call(nodelist, node)
     }
     function renderOprator(element, local_scope) {
+        if (oprators.if in element.attributes) {
+            opratorIf(element, oprators.if, local_scope)
+            return;
+        }
         if (oprators.for in element.attributes) {
             opratorFor(element, element.attributes[oprators.for], local_scope)
             return;
         }
-        if (oprators.if in element.attributes) {
-            opratorIf(element, element.attributes[oprators.if], local_scope)
+        if (oprators.forif in element.attributes) {
+            opratorIf(element, oprators.forif, local_scope)
             return;
         }
         if (oprators.else in element.attributes || oprators.elseif in element.attributes) {
@@ -217,12 +223,12 @@ window.Jsis = function () {
             indexes.push(getIndex(parentnodes, nextel));
             df.appendChild(nextel)
         }
-        execReactiveRemove(opratorIfReactive, df, indexes, parent, local_scope)
+        execReactiveRemove(opratorIfReactive, df, indexes, attr, parent, local_scope)
     };
-    function opratorIfReactive(df, indexes, parent, local_scope) {
+    function opratorIfReactive(df, indexes, attr, parent, local_scope) {
         var elements = df.cloneNode(true).children
         var element = elements[0]
-        if (!!execEval(popAttr(element, element.attributes[oprators.if]), local_scope, element).call(element)) {
+        if (!!execEval(popAttr(element, element.attributes[attr]), local_scope, element).call(element)) {
             execReactiveEnd()
             parent.insertBefore(element, parent.childNodes[indexes[0]])
             render(element, local_scope)
@@ -237,7 +243,7 @@ window.Jsis = function () {
                 if (oprators.elseif in element.attributes) {
                     if (!!execEval(popAttr(element, element.attributes[oprators.elseif]), local_scope, element).call(element)) {
                         // execReactiveEnd()
-                        render(element, local_scope)
+                        // render(element, local_scope)
                         parent.insertBefore(element, parent.childNodes[indexes[i + 1]])
                         render(element, local_scope)
                         return element;
@@ -249,7 +255,7 @@ window.Jsis = function () {
             element = elements[elements.length - 1]
             if (element && oprators.else in element.attributes) {
                 element.removeAttributeNode(element.attributes[oprators.else])
-                render(element, local_scope)
+                // render(element, local_scope)
                 parent.insertBefore(element, parent.childNodes[indexes[indexes.length - 1]])
                 render(element, local_scope)
                 return element;
@@ -322,6 +328,15 @@ window.Jsis = function () {
                     render(catch_el, local_scope)
                 }
             })
+        } else {
+            if (element != undefined)
+                element.remove()
+            if (then_el != undefined) {
+                parent.insertBefore(then_el, parent.childNodes[indexes.then])
+                local_scope[4] = { ...local_scope[4] }
+                local_scope[4][popAttr(then_el, then_el.attributes[oprators.then])] = promise
+                render(then_el, local_scope)
+            }
         }
         return function () {
             if (element != undefined) {
@@ -679,7 +694,7 @@ window.Jsis = function () {
             }
         } else if (typeof node == 'function') {
             node()
-        } else {
+        } else if (node.remove) {
             node.remove()
         }
     };
