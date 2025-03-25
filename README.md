@@ -471,7 +471,7 @@ export default function App() {
 ```html
 <ul>
   <li :for="var i = 0; i < 5; i++">Index: {i}</li>
-  <li :for="var item of [1, 2, 3]">Item: {item}</li>
+  <li :for="var item of [1, 2, 3]" >Item: {item}</li>
   <li :for="var key in {a: 1, b: 2}">Key: {key}</li>
 </ul>
 ```
@@ -509,7 +509,48 @@ export default function App() {
 }
 ```
 
-all in one example
+---
+
+# Conditional Looping with :forif
+
+The `:forif` attribute allows filtering elements within a loop based on a condition.
+
+
+**Jsis:** Uses `:for` to loop and `:forif` to filter directly in the HTML.  
+```html
+<div :forif="u % 2 == 0" :for="var u of ([0,1,2,3,4,5,6,7,8,9])">
+    ${u}
+</div>
+```
+
+**Vue:** Uses `.filter()` within `v-for` to achieve the same behavior as React.  
+```html
+<template>
+  <div v-for="u in [0,1,2,3,4,5,6,7,8,9].filter(u => u % 2 == 0)" :key="u">
+    {{ u }}
+  </div>
+</template>
+```
+
+**React:**  Uses `.filter()` before mapping over the elements.  
+```jsx
+import React from 'react';
+
+export default function App() {
+  const numbers = [0,1,2,3,4,5,6,7,8,9];
+
+  return (
+    <>
+      {numbers.filter(u => u % 2 === 0).map(u => (
+        <div key={u}>{u}</div>
+      ))}
+    </>
+  );
+}
+``` 
+---
+
+## all in one example
 
 ```html
 <!DOCTYPE html>
