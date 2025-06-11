@@ -430,41 +430,6 @@ export default function App() {
 
 ---
 
-## Component
-
-**Jsis:**
-```html
-<comp src="./mycomponent.html"></comp>
-<comp :src="'./mycomponent.html'" :prop="{key: 'value'}"></comp>
-```
-
-**Vue:**
-```html
-<template>
-  <MyComponent :prop="value" />
-</template>
-<script>
-import MyComponent from './MyComponent.vue';
-export default {
-  components: { MyComponent },
-  data() {
-    return { value: { key: 'value' } };
-  }
-};
-</script>
-```
-
-**React:**
-```jsx
-import React from 'react';
-import MyComponent from './MyComponent';
-export default function App() {
-  return <MyComponent prop={{ key: 'value' }} />;
-}
-```
-
----
-
 ## For Loops (Standard, Of, and In)
 
 **Jsis:**
@@ -550,6 +515,45 @@ export default function App() {
 ``` 
 ---
 
+## Component
+
+**Jsis:**
+```html
+<comp src="./mycomponent.html"></comp>
+<comp :src="'./mycomponent.html'" :prop="{key: 'value'}"></comp>
+```
+or
+```js
+JSIS.component("./mycomponent.html",element) // it load the component to the element
+```
+
+**Vue:**
+```html
+<template>
+  <MyComponent :prop="value" />
+</template>
+<script>
+import MyComponent from './MyComponent.vue';
+export default {
+  components: { MyComponent },
+  data() {
+    return { value: { key: 'value' } };
+  }
+};
+</script>
+```
+
+**React:**
+```jsx
+import React from 'react';
+import MyComponent from './MyComponent';
+export default function App() {
+  return <MyComponent prop={{ key: 'value' }} />;
+}
+```
+
+---
+
 ## all in one example
 
 ```html
@@ -620,6 +624,207 @@ export default function App() {
 
 </html>
 ```
+
+
+# components syntax
+```
+
+project/
+│
+├── index.html
+├── jsis.js 
+└── counter.jsis
+
+````
+
+---
+
+## 1. index.html
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="jsis.js"></script>
+</head>
+<body>
+    <div jsis>
+      <h1>Welcome to Jsis!</h1>
+
+      <!-- Mount a component -->
+      <comp src="counter.jsis"></comp>
+      <!-- or -->
+      <script>
+          // JSIS.component("counter.jsis", document.body)
+      </script>
+    </div>
+</body>
+</html>
+````
+
+---
+
+## 2. counter.jsis
+
+```html
+<style>
+ /* your styles */
+  button { padding: 6px 12px; font-size: 16px; }
+</style>
+
+<script>
+  _.title = "Click the counter" // non-reactive
+  __.count = 0                  // reactive
+</script>
+
+<script :ready>
+    // This script with :ready runs after component is mounted
+  console.log("Counter ready:", count.innerText) // access <p id="count"> by id
+</script>
+
+<template>
+  <h2>{title}</h2>
+  <button @click="count++">Clicked {count} times</button>
+  <p id="count">{count}</p>
+</template>
+```
+ 
+---
+
+# 📚 Jsis Component Examples
+
+---
+
+### 🧭 1. **Tabs Component**
+
+**tabs.jsis**
+
+```html
+<style>
+  .tab-btn { padding: 8px; cursor: pointer; }
+  .active { font-weight: bold; }
+</style>
+
+<script>
+  __.activeTab = "Home"
+  _.tabs = ["Home", "About", "Contact"]
+</script>
+
+<template>
+  <div>
+    <div>
+      <button :for="let tab of tabs"
+              :class="activeTab === tab ? 'tab-btn active' : 'tab-btn'"
+              @click="activeTab = tab">{tab}</button>
+    </div>
+
+    <div>
+      <p :if="activeTab === 'Home'">This is the home tab.</p>
+      <p :if="activeTab === 'About'">About us goes here.</p>
+      <p :if="activeTab === 'Contact'">Contact details here.</p>
+    </div>
+  </div>
+</template>
+```
+ 
+---
+
+### 💬 2. **Alert Box Component with Props**
+
+**alert.jsis**
+
+```html
+<style>
+  .alert { padding: 10px; border: 1px solid red; color: red; margin: 10px 0; }
+</style>
+
+<script>
+  _.message = prop.message || "Something went wrong!"
+</script>
+
+<template>
+  <div class="alert">{message}</div>
+</template>
+``` 
+**Usage:**
+
+```html
+<comp :src="'alert.jsis'" :prop="{ message: 'Custom error message!' }"></comp>
+```
+or 
+```js
+JSIS.component("counter.jsis", element, { message: 'Custom error message!' }) // load the component to the element
+```
+
+---
+
+### ✍️ 3. **Two-Way Binding Input Form**
+
+**form.jsis**
+
+```html
+<script>
+  __.name = ""
+</script>
+
+<template>
+  <label>Enter your name:</label>
+  <input type="text" @input="name = this.value" />
+
+  <p>Hello, {name || "Guest"}!</p>
+</template>
+```
+
+---
+
+### 📑 4. **Accordion Component**
+
+**accordion.jsis**
+
+```html
+<script>
+  _.items = [
+    { title: "Section 1", content: "Content of section 1" },
+    { title: "Section 2", content: "Content of section 2" },
+    { title: "Section 3", content: "Content of section 3" }
+  ]
+  __.openIndex = -1
+</script>
+
+<template>
+  <div>
+    <div :for="let i in items">
+      <h3 @click="openIndex = openIndex === i ? -1 : i">{items[i].title}</h3>
+      <p :if="openIndex === i">{items[i].content}</p>
+    </div>
+  </div>
+</template>
+```
+
+---
+
+### ⏱️ 5. **Timer / Clock Component**
+
+**clock.jsis**
+
+```html
+<script>
+  __.now = new Date().toLocaleTimeString()
+
+  setInterval(() => {
+    now = new Date().toLocaleTimeString()
+  }, 1000)
+</script>
+
+<template>
+  <h2>Current Time:</h2>
+  <p>{now}</p>
+</template>
+```
+ 
+
+
+
 
 # licence
  <p>
