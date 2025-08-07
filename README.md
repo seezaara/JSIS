@@ -2,7 +2,7 @@
     <img src="https://raw.githubusercontent.com/seezaara/jsis/main/doc/ico.svg"> 
 </p>
 
-# What is Jsis?
+# What is Jsis (JavaScript Is Simple) ?
 JSIS is a fast performance, reactive JavaScript framework designed for developers who want the simplicity of vanilla JS without the hassle of manually managing the DOM and templates. It works with just HTML, requiring minimal separate scripts, making it lightweight and easy to use and it's Realtime and **`NOT NEED TO COMPILE`**
 
 # Why Should You Use Jsis?
