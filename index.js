@@ -1,5 +1,5 @@
 
-window.Jsis = function () {
+window.JSIS = function () {
     window.request = request
     window.require = require
     var compLine = {}
@@ -11,9 +11,9 @@ window.Jsis = function () {
     var scopeGlobalReactive = collectorProxy({})
 
     // =========================
-    var collectorCaller = []
-    var collectorRecall = {}
+    var collectorCaller
     var collectorCustomKeys
+    var collectorRecall = {}
     var collectorKeyHolder = new Map();
     var collectorRemove = {}
 
@@ -97,7 +97,10 @@ window.Jsis = function () {
     }
     function execEvent(script, scope, element) {
         try {
-            return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){return function(event){"use strict";return (' + script + ') }}}}}}')(...scope);
+            if (check_name(script))
+                return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){return (' + script + ') }}}}}')(...scope);
+            else
+                return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){return function(event){"use strict";return (' + script + ') }}}}}}')(...scope);
         } catch (e) {
             console.error(e.message, "at:'", script, "'", element);
             return config.fake
@@ -140,7 +143,7 @@ window.Jsis = function () {
     }
     // ============================================ renders 
     function renderScript(element, local_scope) {
-        return execScript(element.innerText, '', local_scope)([]);
+        return execScript(element.src ? syncRequest(element.src, undefined, undefined, true) : element.innerText, '', local_scope)([]);
     };
     function popAttr(element, attr) {
 
@@ -196,7 +199,7 @@ window.Jsis = function () {
                 execReactiveEnd();
             }
             last = parent.insertBefore(element.cloneNode(true), last.nextSibling)
-            const scope = [...local_scope]
+            var scope = [...local_scope]
             scope[4] = { ...scope[4] }
             scope[4][name] = index;
 
@@ -464,6 +467,7 @@ window.Jsis = function () {
     // =================================================================== component
 
     function renderComp(element, local_scope) {
+
         var reactive_src = element.getAttribute(config.attr + "src")
         var src = element.getAttribute("src")
         var prop = element.getAttribute(config.attr + "prop")
@@ -471,7 +475,16 @@ window.Jsis = function () {
         element.removeAttribute("src")
         element.removeAttribute(config.attr + "src")
         element.removeAttribute(config.attr + "prop")
-        element.removeAttribute(config.attr + "scoped")
+        element.removeAttribute(config.attr + "global")
+        var attrs = element.getAttributeNames()
+        if (Object.values(oprators).some(function (e) {
+            if (attrs.includes(e)) {
+                console.error("Uncaught SyntaxError: Unexpected token", e, element);
+                return true
+            }
+            return
+        }))
+            return
         //=========================================================
         var new_element = document.createElement('div')
         for (var index = element.attributes.length - 1; index >= 0; --index) {
@@ -496,7 +509,8 @@ window.Jsis = function () {
         }
 
         if (prop != null) {
-            prop = execEval(prop, local_scope, element).call(element) || {}
+            if (typeof prop == "string")
+                prop = execEval(prop, local_scope, element).call(element) || {}
         } else {
             prop = {}
         }
@@ -577,19 +591,18 @@ window.Jsis = function () {
         for (let i = 0; i < scripts.length; i++) {
             if (scripts[i].src) {
                 request(scripts[i].src).then(scripts[i].hasAttribute(config.attr + "ready") ? caller.after_load.bind(null, i) : caller.before_load.bind(null, i))
-            } else {
-                if (scripts[i].hasAttribute(config.attr + "ready"))
-                    caller.after_load(i, scripts[i].innerText)
-                else
-                    caller.before_load(i, scripts[i].innerText)
-            }
+            } else if (scripts[i].hasAttribute(config.attr + "ready"))
+                caller.after_load(i, scripts[i].innerText)
+            else
+                caller.before_load(i, scripts[i].innerText)
+
         }
         //======================
         for (let i = 0; i < styles.length; i++) {
-            var style_scope = styles[i].getAttribute(config.attr + "scoped")
-
-            if (style_scope === '')
+            var style_scope = styles[i].getAttribute(config.attr + "global") == null
+            if (style_scope)
                 style_scope = comp_scope;
+
             if (styles[i].hasAttribute("src")) {
                 request(styles[i].getAttribute("src")).then(caller.styles.bind(null, style_scope, i))
             } else {
@@ -619,11 +632,12 @@ window.Jsis = function () {
                 }
             },
             styles: function (scopeStype, key, val) {
-
                 if (scopeStype)
-                    styles[key] = val.replace(config.css_minify, "").replace(config.css_selector, scopeStype + " $1")
-                else
-                    styles[key] = val.replace(config.css_minify, "")
+                    // styles[key] = val.replace(config.css_minify, "").replace(config.css_selector, scopeStype + " $1")
+                    styles[key] = val
+                else {
+                    styles[key] = val
+                }
                 coutn++
                 if (coutn == max) {
                     end(before_load.join('\n'), after_load.join('\n'), styles.join(''))
@@ -645,7 +659,7 @@ window.Jsis = function () {
             if (!(key in collectorRecall)) collectorRecall[key] = [];
             if (collectorCustomKeys !== undefined) {
                 if (!collectorKeyHolder.has(key)) collectorKeyHolder.set(key, new Map());
-                const keyHolderMap = collectorKeyHolder.get(key);
+                var keyHolderMap = collectorKeyHolder.get(key);
                 keyHolderMap.set(collectorCaller, collectorCustomKeys);
             }
             collectorRecall[key].push(collectorCaller);
@@ -663,6 +677,7 @@ window.Jsis = function () {
 
     function execReactiveCaller(call, keyHolderMap) {
         if (!keyHolderMap) {
+
             for (let i = 0; i < call.length; i++) {
                 if (call[i]()) {
                     call.splice(i, 1); // Remove the element at index i
@@ -671,8 +686,8 @@ window.Jsis = function () {
             }
         } else {
             for (let i = 0; i < call.length; i++) {
-                const currentCaller = call[i];
-                const customKeys = keyHolderMap.get(currentCaller); // Use function as key in Map
+                var currentCaller = call[i];
+                var customKeys = keyHolderMap.get(currentCaller); // Use function as key in Map
                 if (customKeys) {
                     execReactiveCallerRemove(collectorRemove[customKeys]);
                     collectorRemove[customKeys] = currentCaller();
@@ -756,8 +771,64 @@ window.Jsis = function () {
             xhttp.send(data);
         })
     }
+    function syncRequest(url, data, opt) {
+        if (opt == undefined) {
+            opt = {}
+        }
+        if (data == undefined) {
+            if (!opt.method)
+                opt.method = 'get'
+        } else if (typeof data == "object" && !(data instanceof FormData)) {
+            data = new URLSearchParams(data)
+        }
+        if (!opt.method)
+            opt.method = "post"
+
+        var xhttp = new XMLHttpRequest();
+        if (opt.responseType)
+            xhttp.responseType = opt.responseType;
+
+        xhttp.onerror = opt.onerror
+        xhttp.onabort = opt.onerror
+        xhttp.ontimeout = opt.onerror
+        xhttp.onprogress = opt.ondownload
+        xhttp.upload.onprogress = opt.onupload
+        xhttp.open(opt.method, url, false);
+        if (opt.cache != undefined ? !opt.cache : opt.method != "post") {
+            xhttp.setRequestHeader("Cache-Control", "no-cache, no-store, max-age=0");
+            xhttp.setRequestHeader("Expires", "Tue, 01 Jan 1980 1:00:00 GMT");
+            xhttp.setRequestHeader("Pragma", "no-cache");
+        } else {
+            xhttp.setRequestHeader("Cache-Control", "public, max-age=604800, immutable");
+        }
+        xhttp.send(data);
+
+        if (xhttp.readyState == 4) {
+            return xhttp.response;
+        }
+    }
     function require(url) {
-        return request(url).then(execRequire)
+        return syncRequest(url).then(execRequire)
+    }
+    function component(src, new_element, prop = {}, local_scope = {}) {
+        renderCompReactive(src, new_element, prop, !local_scope, local_scope, false)
+    }
+    function check_name(name) {
+        name = name.trim();
+        if (!name) return false;
+        var first = name.charCodeAt(0);
+        if (!(first === 36 || first === 95 || (first >= 65 && first <= 90) || (first >= 97 && first <= 122)))
+            return false;
+
+        let i = 1;
+        while (i < name.length) {
+            var c = name.charCodeAt(i);
+            if (!(c === 36 || c === 95 || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57)))
+                return false;
+            i++;
+        }
+
+        return true;
     }
     function create(element, prop) {
         if (prop == undefined && !(element instanceof Element)) {
@@ -782,6 +853,7 @@ window.Jsis = function () {
         document.addEventListener("DOMContentLoaded", function () { create() });
     }
     return {
+        component: component,
         create: create
     }
 }()
