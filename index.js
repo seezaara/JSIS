@@ -186,7 +186,7 @@ window.JSIS = function () {
         var parent = element.parentNode
         var last = element.previousSibling
         parent.removeChild(element)
-        execReactiveRemove(opratorForReactive, popAttr(element, attr), element, last, parent, local_scope)
+        execReactiveRemoveLastElements(opratorForReactive, popAttr(element, attr), element, last, parent, local_scope)
     };
     function opratorForReactive(script, element, last, parent, local_scope) {
 
@@ -226,7 +226,7 @@ window.JSIS = function () {
             indexes.push(getIndex(parentnodes, nextel));
             df.appendChild(nextel)
         }
-        execReactiveRemove(opratorIfReactive, df, indexes, attr, parent, local_scope)
+        execReactiveRemoveLastElements(opratorIfReactive, df, indexes, attr, parent, local_scope)
     };
     function opratorIfReactive(df, indexes, attr, parent, local_scope) {
         var elements = df.cloneNode(true).children
@@ -296,7 +296,7 @@ window.JSIS = function () {
             parent.removeChild(catch_el)
         }
         // window.parent = parentnodes
-        execReactiveRemove(opratorWaitReactive, element, then_el, catch_el, parent, indexes, local_scope)
+        execReactiveRemoveLastElements(opratorWaitReactive, element, then_el, catch_el, parent, indexes, local_scope)
 
     };
     function opratorWaitReactive(element, then_el, catch_el, parent, indexes, local_scope) {
@@ -342,18 +342,26 @@ window.JSIS = function () {
             }
         }
         return function () {
+            let disconnected = false;
             if (element != undefined) {
+                if (!element.isConnected)
+                    disconnected = true;
                 element.remove()
                 element = undefined
             }
             if (then_el != undefined) {
+                if (!element.isConnected)
+                    disconnected = true;
                 then_el.remove()
                 then_el = undefined
             }
             if (catch_el != undefined) {
+                if (!element.isConnected)
+                    disconnected = true;
                 catch_el.remove()
                 catch_el = undefined
             }
+            return disconnected;
         }
     };
     // ============================================ attributes
@@ -495,7 +503,7 @@ window.JSIS = function () {
         element.parentNode.replaceChild(new_element, element);
         element.remove()
         if (reactive_src != null) {
-            execReactiveRemove(renderCompReactive, reactive_src, new_element, prop, scoped, local_scope)
+            execReactiveRemoveLastElements(renderCompReactive, reactive_src, new_element, prop, scoped, local_scope)
         } else {
             if (src)
                 renderCompReactive(src, new_element, prop, scoped, local_scope, false)
@@ -658,9 +666,9 @@ window.JSIS = function () {
         if (typeof key === "string" && collectorCaller !== undefined) {
             if (!(key in collectorRecall)) collectorRecall[key] = [];
             if (collectorCustomKeys !== undefined) {
-                if (!collectorKeyHolder.has(key)) collectorKeyHolder.set(key, new Map());
-                var keyHolderMap = collectorKeyHolder.get(key);
-                keyHolderMap.set(collectorCaller, collectorCustomKeys);
+                if (!collectorKeyHolder.has(key)) collectorKeyHolder.set(key, new WeakMap());
+                var removeLastElementMap = collectorKeyHolder.get(key);
+                removeLastElementMap.set(collectorCaller, collectorCustomKeys);
             }
             collectorRecall[key].push(collectorCaller);
         }
@@ -675,43 +683,53 @@ window.JSIS = function () {
         return true;
     }
 
-    function execReactiveCaller(call, keyHolderMap) {
-        if (!keyHolderMap) {
-
+    function execReactiveCaller(call, removeLastElementMap) {
+        if (!removeLastElementMap) {
             for (let i = 0; i < call.length; i++) {
                 if (call[i]()) {
-                    call.splice(i, 1); // Remove the element at index i
-                    i--; // Adjust the index to avoid skipping the next element
+                    call.splice(i, 1);
+                    i--;
                 }
             }
         } else {
             for (let i = 0; i < call.length; i++) {
                 var currentCaller = call[i];
-                var customKeys = keyHolderMap.get(currentCaller); // Use function as key in Map
+                var customKeys = removeLastElementMap.get(currentCaller);
                 if (customKeys) {
-                    execReactiveCallerRemove(collectorRemove[customKeys]);
-                    collectorRemove[customKeys] = currentCaller();
+                    if (execReactiveCallerRemove(collectorRemove[customKeys])) {
+                        call.splice(i, 1);
+                        i--;
+                        delete collectorRemove[customKeys];
+                    }
+                    else
+                        collectorRemove[customKeys] = currentCaller();
                 } else {
                     if (currentCaller()) {
-                        call.splice(i, 1); // Remove the element at index i
-                        i--; // Adjust the index to account for the removed element
+                        call.splice(i, 1);
+                        i--;
                     }
                 }
             }
         }
     }
     function execReactiveCallerRemove(node) {
-        if (!node) return;
+        if (!node) return true;
+        let disconnected = false;
         if (typeof node == 'object' && node.length) {
             for (let i = 0; i < node.length; i++) {
+                if (!node[i] || !node[i].isConnected)
+                    disconnected = true;
                 if (node[i].remove)
                     node[i].remove()
             }
         } else if (typeof node == 'function') {
-            node()
+            return node()
         } else if (node.remove) {
+            if (!node.isConnected)
+                disconnected = true;
             node.remove()
         }
+        return disconnected;
     };
 
     // ========= 
@@ -719,7 +737,7 @@ window.JSIS = function () {
         collectorCaller = reactive.bind.apply(reactive, arguments);
         collectorCaller(true)
     };
-    function execReactiveRemove(reactive) {
+    function execReactiveRemoveLastElements(reactive) {
         var kye = Math.floor(Math.random() * 10000000)
         collectorCustomKeys = kye
         collectorCaller = reactive.bind.apply(reactive, arguments);
