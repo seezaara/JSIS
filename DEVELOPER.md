@@ -9,6 +9,138 @@ This is a compact client-side framework built around three ideas:
 It is not a virtual DOM framework. It works by **walking real DOM nodes**, attaching behavior, and re-inserting cloned nodes when reactive values change.
 
 
+## Full JSIS Runtime Flow
+ 
+### Render Flow
+
+ ```mermaid
+flowchart TD
+    C["render(root, scope)"]
+    C --> D["renderSingle(node)"]
+    D --> E{"node type"}
+
+    E -->|"SCRIPT"| ED["renderScript()"] 
+    E -->|"COMP"| EA["renderComp()"]
+    E -->|"TEXT"| EB["renderText()"]
+    E -->|"ATTR"| EC["renderAttr()"]
+
+
+    EC --> J["Operator Attributes"]
+    EC --> I["Event Attributes"]
+    EC --> K["Normal Attributes"] 
+  
+    EA --> AB["request(component.html)"]
+    AB --> AC["Parse HTML"]
+
+    AC --> AD["Extract Template"]
+    AD --> AG["Insert Template"]
+    AG --> AH["render(root, scope)"] 
+
+    AC --> AE["Extract Scripts"]
+    AE --> AI["execScript()"]
+
+    AC --> AF["Extract Styles"]
+    
+ 
+    Q{"execReactive()"} 
+ 
+    K --> Q
+    EB --> Q
+
+``` 
+
+### Operator flow
+ 
+```mermaid
+flowchart TD 
+
+    G{"Operator?"}
+
+    G -->|:if :elseif :else| H["operatorIf()"]
+    G -->|:for| I["operatorFor()"]
+    G -->|:wait :then :catch| J["operatorWait()"]
+    
+    H --> K["Reactive If Renderer"]
+    I --> L["Reactive Loop Renderer"]
+    J --> M["Reactive Promise Renderer"]
+    
+    M --> AJ["Show Loading Node"]
+
+    AJ --> AK{"Promise Result"}
+
+    AK -->|resolve| AL["Render :then"]
+
+    AK -->|reject| AM["Render :catch"]
+    
+```
+
+### Reactive Data Structures
+
+```mermaid
+flowchart TD
+
+    A["Reactive Runtime"]
+
+    A --> B["collectorTempCaller"]
+    A --> C["collectorTempKeys"]
+
+    A --> D["collectorRecall : WeakMap"]
+    A --> E["collectorKeyHolder : Map"]
+    A --> F["collectorRemove : Object"]
+
+
+    D --> D1["target object"]
+    D1 --> D2["Map"]
+    D2 --> D3["reactive key"]
+    D3 --> D4["Array"]
+    D4 --> D5["caller"]
+    D4 --> D6["caller"]
+    D4 --> D7["caller"]
+
+
+    E --> E1["reactive key"]
+    E1 --> E2["WeakMap"]
+    E2 --> E3["caller"]
+    E3 --> E4["cleanup key"]
+
+
+    F --> F1["cleanup key"]
+    F1 --> F2["single node"]
+    F1 --> F3["array node[]"]
+    F1 --> F4["function"]
+```
+
+### Reactive Registration Lifecycle
+
+```mermaid
+flowchart TD
+
+    A["execReactive()"] --> B["Create bound caller"]
+    B --> C["collectorTempCaller = caller"]
+    C --> D["Run caller immediately"]
+
+    D --> E["Reactive reads happen"]
+
+    E --> F["Proxy GET registers dependencies"]
+
+    F --> G["execReactiveEnd()"]
+
+    G --> H["Clear collectorTempCaller"]
+
+
+
+    I["execReactiveCleaner()"] --> J["Generate cleanup key"]
+    J --> K["collectorTempKeys = key"]
+    K --> L["Create bound caller"]
+    L --> M["Run caller immediately"]
+
+    M --> N["Save cleanup result"]
+
+    N --> O["collectorRemove[key] = result"]
+
+    O --> G
+```
+
 ## 1) Mental model
 
 Think of JSIS as a small runtime that turns this:
@@ -33,35 +165,6 @@ into:
 * loops
 * async/promise blocks
 * reusable components
-
-
-## 2) High-level architecture
-
-```mermaid
-flowchart TD
-    A[window.JSIS IIFE] --> B[create()]
-    B --> C[render(root, scope)]
-    C --> D[renderSingle(node)]
-    D --> E{node type?}
-
-    E -->|COMP| F[renderComp()]
-    E -->|SCRIPT type=JSIS| G[renderScript()]
-    E -->|normal element| H[renderAttr()]
-    H --> I[coreAttr()]
-    H --> J[renderText()]
-    H --> K[:load custom hook]
-
-    F --> L[request component HTML]
-    L --> M[parse template/script/style]
-    M --> N[renderCompReactiveCodes()]
-    N --> O[execScript()]
-    N --> P[append template content]
-    P --> C
-
-    J --> Q[execReactive()]
-    Q --> R[collectorProxy dependency tracking]
-    R --> S[setter triggers re-render]
-```
 
 
 ## 3) Public API
@@ -341,6 +444,41 @@ So the runtime knows which rendering function depends on which key.
 
 
 ## 12) Reactive caller lifecycle
+
+### Internal Object Layout
+
+```text
+collectorTempCaller
+└── current reactive callback
+
+collectorTempKeys
+└── current cleanup key
+
+
+collectorRecall (WeakMap)
+└── target object
+    └── Map
+        └── reactive key
+            └── [
+                caller,
+                caller,
+                caller
+            ]
+
+
+collectorKeyHolder (Map)
+└── reactive key
+    └── WeakMap
+        └── caller
+            └── cleanup key
+
+
+collectorRemove (Object)
+└── cleanup key
+    ├── DOM node
+    ├── DOM node[]
+    └── cleanup function
+```
 
 Reactive rendering is done through:
 
