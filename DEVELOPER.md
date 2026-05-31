@@ -152,7 +152,7 @@ Think of JSIS as a small runtime that turns this:
 
   <div :if="count > 0">Count is {count}</div>
 
-  <comp src="'/components/card.html'" :prop="{ title: 'Hello' }"></comp>
+  <comp src="/components/card.html" :prop="{ title: 'Hello' }"></comp>
 </div>
 ```
 
