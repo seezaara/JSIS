@@ -36,6 +36,7 @@ window.JSIS = function () {
         load: ":load",
         // loaded: ":loaded",
         attr: ":",
+        dom: "::",
         event: "@",
         event2: ":on",
         this_test: /[^0-9a-zA-Z_$](this)[^0-9a-zA-Z_$]/,
@@ -135,13 +136,8 @@ window.JSIS = function () {
         }
     }
     // ============================================= execute js
-    function execScript(before, after, scope) {
-        try {
-            return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){' + before + ';return function(){ with(this){ return function(){' + after + '}}}}}}}}')(...scope);
-        } catch (e) {
-            console.error(e);
-            return config.fake
-        }
+    function execScript(before, ready, destroy, scope) {
+        return Function('_', '__', '_$', '__$', 'prop', 'with(__$){with(_$){with(__){with(_){with(prop){' + before + ';return function(){ with(this){ return function(){try {' + ready + ';return function(){try {' + destroy + ' } catch (e) { console.error(e); }}} catch (e) { console.error(e); }}}}}}}}}')(...scope);
     }
     function execRequire(script) {
         return new Promise(function (res) {
@@ -158,10 +154,9 @@ window.JSIS = function () {
     }
     // ============================================ renders 
     function renderScript(element, local_scope) {
-        return execScript(element.src ? syncRequest(element.src, undefined, undefined, true) : element.innerText, '', local_scope)([]);
+        return execScript(element.src ? syncRequest(element.src, undefined, undefined, true) : element.innerText, '', '', local_scope)([]);
     };
     function popAttr(element, attr) {
-
         element.removeAttributeNode(attr)
         return attr.value
     }
@@ -170,15 +165,15 @@ window.JSIS = function () {
     }
     function renderoperator(element, local_scope) {
         if (operators.if in element.attributes) {
-            operatorIf(element, operators.if, local_scope)
+            operatorIf(element, local_scope)
             return;
         }
         if (operators.for in element.attributes) {
-            operatorFor(element, element.attributes[operators.for], local_scope)
+            operatorFor(element, local_scope)
             return;
         }
         if (operators.forif in element.attributes) {
-            operatorIf(element, operators.forif, local_scope)
+            operatorIf(element, local_scope)
             return;
         }
         if (operators.else in element.attributes || operators.elseif in element.attributes) {
@@ -197,18 +192,24 @@ window.JSIS = function () {
         }
         return true;
     };
-    function operatorFor(element, attr, local_scope) {
-        var parent = element.parentNode
-        var last = element.previousSibling
-        parent.removeChild(element)
-        execReactiveCleaner(operatorForReactive, popAttr(element, attr), element, last, parent, local_scope)
-    };
-    function operatorForReactive(script, element, last, parent, local_scope) {
+    function operatorFor(element, local_scope) {
+        var parent = element.parentNode;
+        var last = element.previousSibling;
+        parent.removeChild(element);
+        execReactiveCleaner(operatorForReactive, element.outerHTML, last, parent, local_scope);
+    }
+
+    function operatorForReactive(html, last, parent, local_scope) {
         if (last == null) last = parent.firstChild
         var nodes = [];
         var started = false;
 
-        execLoop(script, local_scope, element).call(function (index, name) {
+        var holder = document.createElement(parent.tagName);
+        holder.innerHTML = html;
+        var element = holder.firstElementChild;
+        if (!element)
+            console.log(html, element)
+        execLoop(popAttr(element, element.attributes[operators.for]), local_scope, element).call(function (index, name) {
             if (!started) {
                 started = true;
                 execReactiveEnd();
@@ -225,110 +226,118 @@ window.JSIS = function () {
         });
         if (!started)
             execReactiveEnd();
-        return nodes;
-    }
-    function operatorIf(element, attr, local_scope) {
-        var df = document.createDocumentFragment()
-        var parent = element.parentNode
-        var parentnodes = parent.childNodes
-        var nextel = element.nextElementSibling;
-        var indexes = [getIndex(parentnodes, element)];
-        df.appendChild(element)
-        while (nextel != null && operators.elseif in nextel.attributes) {
-            var hold = nextel.nextElementSibling
-            indexes.push(getIndex(parentnodes, nextel));
-            df.appendChild(nextel)
-            nextel = hold
-        }
-        if (nextel != null && operators.else in nextel.attributes) {
-            indexes.push(getIndex(parentnodes, nextel));
-            df.appendChild(nextel)
-        }
-        execReactiveCleaner(operatorIfReactive, df, indexes, attr, parent, local_scope)
-    };
 
-    function operatorIfReactive(df, indexes, attr, parent, local_scope) {
-        var elements = df.cloneNode(true).children
-        var element = elements[0]
-        if (!!execEval(popAttr(element, element.attributes[attr]), local_scope, element).call(element)) {
-            execReactiveEnd()
-            parent.insertBefore(element, parent.childNodes[indexes[0]])
-            render(element, local_scope)
-            return element;
-        } else {
-            execReactiveEnd()
-            // remove the if element for check else if and else
-            elements[0].remove()
-            //  ======================== else if operator
-            for (let i = 0; i < elements.length; i++) {
-                var element = elements[i]
-                if (operators.elseif in element.attributes) {
-                    if (!!execEval(popAttr(element, element.attributes[operators.elseif]), local_scope, element).call(element)) {
-                        // execReactiveEnd()
-                        // render(element, local_scope)
-                        parent.insertBefore(element, parent.childNodes[indexes[i + 1]])
-                        render(element, local_scope) 
-                        return element;
-                    }
-                } else
-                    break
+        return function () {
+            for (const child of nodes) {
+                child.remove();
             }
-            //  ======================== else operator 
-            element = elements[elements.length - 1]
-            if (element && operators.else in element.attributes) {
-                element.removeAttributeNode(element.attributes[operators.else])
-                // render(element, local_scope)
-                parent.insertBefore(element, parent.childNodes[indexes[indexes.length - 1]])
-                render(element, local_scope) 
-                return element;
-            }
-            return false
+            return !parent.isConnected
         }
-    };
+    }
+
+    function operatorIf(element, local_scope) {
+
+        var parent = element.parentNode;
+        var parentnodes = parent.childNodes;
+        var nextel = element.nextElementSibling;
+
+        var holder = document.createElement(parent.tagName);
+        var indexes = [getIndex(parentnodes, element)];
+        holder.appendChild(element);
+
+        while (nextel && operators.elseif in nextel.attributes) {
+            var hold = nextel.nextElementSibling;
+            indexes.push(getIndex(parentnodes, nextel));
+            holder.appendChild(nextel);
+            nextel = hold;
+        }
+
+        if (nextel && operators.else in nextel.attributes) {
+            indexes.push(getIndex(parentnodes, nextel));
+            holder.appendChild(nextel);
+        }
+
+        execReactiveCleaner(operatorIfReactive, holder.innerHTML, indexes, parent, local_scope);
+    }
+
+    function operatorIfReactive(html, indexes, parent, local_scope) {
+        var holder = document.createElement(parent.tagName);
+        holder.innerHTML = html;
+        var elements = holder.children;
+        var element = elements[0];
+
+        if (!!execEval(popAttr(element, element.attributes[operators.if] || element.attributes[operators.forif]), local_scope, element).call(element)) {
+            execReactiveEnd();
+            parent.insertBefore(element, parent.childNodes[indexes[0]]);
+            render(element, local_scope);
+            return element;
+        }
+        execReactiveEnd();
+
+        for (let i = 1; i < elements.length; i++) {
+            var el = elements[i];
+            if (operators.elseif in el.attributes) {
+                if (!!execEval(popAttr(el, el.attributes[operators.elseif]), local_scope, el).call(el)) {
+                    parent.insertBefore(el, parent.childNodes[indexes[i]]);
+                    render(el, local_scope);
+                    return el;
+                }
+            } else {
+                break;
+            }
+        }
+
+        var last = elements[elements.length - 1];
+        if (last && operators.else in last.attributes) {
+            last.removeAttributeNode(last.attributes[operators.else]);
+            parent.insertBefore(last, parent.childNodes[indexes[indexes.length - 1]]);
+            render(last, local_scope);
+            return last;
+        }
+
+        return function () {
+            for (const child of elements) {
+                child.remove();
+            }
+            return !parent.isConnected
+        }
+    }
+
     // ============================================ operator promise
     function operatorWait(element, local_scope) {
-        var parent = element.parentNode
-        var parentnodes = parent.childNodes
-        var indexes = { wait: getIndex(parentnodes, element) };
 
-        var next = element.nextElementSibling
-        if (next) {
-            var nextnext = next.nextElementSibling
-            if (nextnext) {
-                var then_el = next.attributes[operators.then] || nextnext.attributes[operators.then]
-                var catch_el = next.attributes[operators.catch] || nextnext.attributes[operators.catch]
-            } else {
-                var then_el = next.attributes[operators.then]
-                var catch_el = next.attributes[operators.catch]
-            }
+        var parent = element.parentNode;
+        var parentnodes = parent.childNodes;
+        var nextel = element.nextElementSibling;
+        var holder = document.createElement(parent.tagName);
+
+        var indexes = [getIndex(parentnodes, element)];
+        holder.appendChild(element);
+
+        if (nextel && operators.then in nextel.attributes) {
+            var hold = nextel.nextElementSibling;
+            indexes.push(getIndex(parentnodes, nextel));
+            holder.appendChild(nextel);
+            nextel = hold;
         }
-        parent.removeChild(element)
 
-        if (then_el != undefined) {
-            then_el = then_el.ownerElement
-            indexes.then = getIndex(parentnodes, then_el)
-            parent.removeChild(then_el)
+        if (nextel && operators.catch in nextel.attributes) {
+            indexes.push(getIndex(parentnodes, nextel));
+            holder.appendChild(nextel);
         }
-        if (catch_el != undefined) {
+        execReactiveCleaner(operatorWaitReactive, holder.innerHTML, indexes, parent, local_scope);
+    }
 
-            catch_el = catch_el.ownerElement
-            indexes.catch = getIndex(parentnodes, catch_el)
-            parent.removeChild(catch_el)
-        }
-        // window.parent = parentnodes
-        execReactiveCleaner(operatorWaitReactive, element, then_el, catch_el, parent, indexes, local_scope)
-
-    };
-    function operatorWaitReactive(element, then_el, catch_el, parent, indexes, local_scope) {
-        element = element.cloneNode(true)
-        if (then_el != undefined)
-            then_el = then_el.cloneNode(true)
-        if (catch_el != undefined)
-            catch_el = catch_el.cloneNode(true)
+    function operatorWaitReactive(html, indexes, parent, local_scope) {
+        var holder = document.createElement(parent.tagName);
+        holder.innerHTML = html;
+        var element = holder.children[0];
+        var then_el = holder.children[1];
+        var catch_el = holder.children[2];
 
         var promise = execEval(popAttr(element, element.attributes[operators.wait]), local_scope, element).call(element)
         execReactiveEnd()
-        parent.insertBefore(element, parent.childNodes[indexes.wait])
+        parent.insertBefore(element, parent.childNodes[indexes[0]])
         render(element, local_scope)
         if (promise instanceof Promise) {
             var parent = element.parentNode
@@ -336,7 +345,7 @@ window.JSIS = function () {
                 if (element != undefined)
                     element.remove()
                 if (then_el != undefined) {
-                    parent.insertBefore(then_el, parent.childNodes[indexes.then])
+                    parent.insertBefore(then_el, parent.childNodes[indexes[1]])
                     local_scope[4] = { ...local_scope[4] }
                     local_scope[4][popAttr(then_el, then_el.attributes[operators.then])] = a
                     render(then_el, local_scope)
@@ -345,7 +354,7 @@ window.JSIS = function () {
                 if (element != undefined)
                     element.remove()
                 if (catch_el != undefined) {
-                    parent.insertBefore(catch_el, parent.childNodes[indexes.catch])
+                    parent.insertBefore(catch_el, parent.childNodes[indexes[2]])
                     local_scope[4] = { ...local_scope[4] }
                     local_scope[4][popAttr(catch_el, catch_el.attributes[operators.catch])] = a
                     render(catch_el, local_scope)
@@ -355,33 +364,26 @@ window.JSIS = function () {
             if (element != undefined)
                 element.remove()
             if (then_el != undefined) {
-                parent.insertBefore(then_el, parent.childNodes[indexes.then])
+                parent.insertBefore(then_el, parent.childNodes[indexes[1]])
                 local_scope[4] = { ...local_scope[4] }
                 local_scope[4][popAttr(then_el, then_el.attributes[operators.then])] = promise
                 render(then_el, local_scope)
             }
         }
         return function () {
-            let disconnected = true;
             if (element != undefined) {
-                if (element.isConnected)
-                    disconnected = false;
                 element.remove()
                 element = undefined
             }
             if (then_el != undefined) {
-                if (then_el.isConnected)
-                    disconnected = false;
                 then_el.remove()
                 then_el = undefined
             }
             if (catch_el != undefined) {
-                if (catch_el.isConnected)
-                    disconnected = false;
                 catch_el.remove()
                 catch_el = undefined
             }
-            return disconnected;
+            return !parent.isConnected
         }
     };
     // ============================================ attributes
@@ -407,6 +409,9 @@ window.JSIS = function () {
             attr.ownerElement.addEventListener(attr.name.substring(1), execEvent(attr.value, local_scope, attr.ownerElement));
             // event don't need reactive proxy
             return true
+        } else if (attr.name.substring(0, 2) == config.dom) {
+            execReactive(coreDOMReactive, attr.value, attr.name.substring(2), attr.ownerElement, local_scope)
+            return true
         } else if ((attr.name !== config.load) && attr.name[0] == config.attr) {
             execReactive(coreAttrReactive, attr.value, attr.name.substring(1), attr.ownerElement, local_scope)
             return true
@@ -421,6 +426,12 @@ window.JSIS = function () {
         if (check != null)
             element.setAttribute(name, check);
 
+    };
+    function coreDOMReactive(script, name, element, local_scope) {
+        if (!element.isConnected)
+            return true
+        element[name] = execEval(script, local_scope, element).call(element)
+        execReactiveEnd();
     };
     function checkAttr(element, name, value) {
         if (typeof value == "object") {
@@ -550,6 +561,9 @@ window.JSIS = function () {
             local_scope = local_scope.slice(0, 4)
             local_scope[4] = prop
         }
+
+
+        var destroy_init;
         var random = 'comp' + Math.floor(Math.random() * 10000000)
         element.setAttribute("data-id", random)
         request(src).then(orderCompLine(function (data) {
@@ -558,24 +572,31 @@ window.JSIS = function () {
             hold.innerHTML = data;
             var template = hold.querySelector("template")
             if (template) {
-                renderCompReactiveCodes(hold, 'div[data-id=' + random + ']', function (before, after, styles) {
-                    if (styles != '') {
-                        var style = document.createElement('style');
-                        style.innerHTML = styles;
-                        element.appendChild(style)
-                    }
-                    //-----------------------------------------
-                    var call = execScript(before, after, local_scope)
-                    //-----------------------------------------
-                    element.appendChild(template.content)
-                    render(element, local_scope);
-                    var ids = renderCompId(element)
-                    ids.template = element
-                    call.call(ids)()
-                })
+                renderCompReactiveCodes(hold, 'div[data-id=' + random + ']',
+                    function (before, after, destroy, styles) {
+                        if (styles != '') {
+                            var style = document.createElement('style');
+                            style.innerHTML = styles;
+                            element.appendChild(style)
+                        }
+                        //-----------------------------------------
+                        var call = execScript(before, after, destroy, local_scope);
+                        //-----------------------------------------
+                        element.appendChild(template.content);
+                        render(element, local_scope);
+
+                        var ids = renderCompId(element);
+                        ids.template = element;
+
+                        destroy_init = call.call(ids)();
+                    })
             } else
                 console.error('Cannot find "template" in component:', src);
         }))
+        return function () {
+            destroy_init && destroy_init()
+            return !element.isConnected;
+        }
     };
     function orderCompLine(fun) {
         var index = ++orderCompLineCount;
@@ -611,17 +632,30 @@ window.JSIS = function () {
     function renderCompReactiveCodes(hold, comp_scope, callback) {
         var scripts = hold.querySelectorAll("script")
         var styles = hold.querySelectorAll("style")
-        if (scripts.length + styles.length == 0)
-            return callback('', '', '')
-        var caller = getCode(callback, scripts.length + styles.length)
-        for (let i = 0; i < scripts.length; i++) {
-            if (scripts[i].src) {
-                request(scripts[i].src).then(scripts[i].hasAttribute(config.attr + "ready") ? caller.after_load.bind(null, i) : caller.before_load.bind(null, i))
-            } else if (scripts[i].hasAttribute(config.attr + "ready"))
-                caller.after_load(i, scripts[i].innerText)
-            else
-                caller.before_load(i, scripts[i].innerText)
 
+        if (scripts.length + styles.length == 0)
+            return callback('', '', '', '');
+
+        var caller = getCode(callback, scripts.length + styles.length)
+
+        for (let i = 0; i < scripts.length; i++) {
+            var script = scripts[i];
+            if (script.src) {
+                request(script.src).then(
+                    script.hasAttribute(config.attr + "ready")
+                        ? caller.ready_script.bind(null, i) :
+                        script.hasAttribute(config.attr + "destroy") ?
+                            caller.destroy_script.bind(null, i) :
+                            caller.before_script.bind(null, i)
+                );
+
+            } else if (script.hasAttribute(config.attr + "ready")) {
+                caller.ready_script(i, script.innerText);
+            } else if (script.hasAttribute(config.attr + "destroy")) {
+                caller.destroy_script(i, script.innerText);
+            } else {
+                caller.before_script(i, script.innerText);
+            }
         }
         //======================
         for (let i = 0; i < styles.length; i++) {
@@ -640,22 +674,39 @@ window.JSIS = function () {
     function getCode(end, max) {
 
         var coutn = 0
-        var before_load = []
-        var after_load = []
+        var before_script = []
+        var ready_script = []
+        var destroy_script = []
         var styles = [];
         return {
-            before_load: function (key, val) {
-                before_load[key] = val
+            before_script: function (key, val) {
+                before_script[key] = val
                 coutn++
                 if (coutn == max) {
-                    end(before_load.join('\n'), after_load.join('\n'), styles.join(''))
+                    end(before_script.join('\n'),
+                        ready_script.join('\n'),
+                        destroy_script.join('\n'),
+                        styles.join(''))
                 }
             },
-            after_load: function (key, val) {
-                after_load[key] = val
+            ready_script: function (key, val) {
+                ready_script[key] = val
                 coutn++
                 if (coutn == max) {
-                    end(before_load.join('\n'), after_load.join('\n'), styles.join(''))
+                    end(before_script.join('\n'),
+                        ready_script.join('\n'),
+                        destroy_script.join('\n'),
+                        styles.join(''))
+                }
+            },
+            destroy_script: function (key, val) {
+                destroy_script[key] = val
+                coutn++
+                if (coutn == max) {
+                    end(before_script.join('\n'),
+                        ready_script.join('\n'),
+                        destroy_script.join('\n'),
+                        styles.join(''))
                 }
             },
             styles: function (scopeStype, key, val) {
@@ -667,7 +718,10 @@ window.JSIS = function () {
                 }
                 coutn++
                 if (coutn == max) {
-                    end(before_load.join('\n'), after_load.join('\n'), styles.join(''))
+                    end(before_script.join('\n'),
+                        ready_script.join('\n'),
+                        destroy_script.join('\n'),
+                        styles.join(''))
                 }
             }
         }
@@ -681,22 +735,20 @@ window.JSIS = function () {
         });
     };
 
-    // called when reactive value is READ
     function collectorProxyGetter(target, key) {
-        // register dependency if temp was set
         if (typeof key === "string" && collectorTempCaller !== undefined) {
-
             // target -> key -> callers
             var scopeMap = collectorRecall.get(target);
             if (!scopeMap)
                 collectorRecall.set(target, scopeMap = new Map());
 
-            // get all renders using this key
             var callers = scopeMap.get(key);
             if (!callers)
                 scopeMap.set(key, callers = []);
 
-            callers.push(collectorTempCaller);
+            // do not add the same reactive twice 
+            if (!callers.includes(collectorTempCaller))
+                callers.push(collectorTempCaller);
 
             // save special remove/rebuild key
             // used by :if / :for
@@ -744,7 +796,7 @@ window.JSIS = function () {
             // get remove key
             var customKeys = CleanerMap.get(currentCaller);
             if (customKeys) {
-                // remove old DOM
+                // remove old DOM  
                 if (execReactiveCallerRemove(collectorRemove[customKeys])) {
                     // if disconnected remove watcher
                     call.splice(i, 1);
@@ -765,15 +817,15 @@ window.JSIS = function () {
     }
 
     // remove old rendered nodes
-    function execReactiveCallerRemove(node) { 
+    function execReactiveCallerRemove(node) {
         if (node == undefined) return true;
         let disconnected = false;
 
         if (typeof node == 'object' && node.length) {
             for (let i = 0; i < node.length; i++) {
-                var single = node[i]; 
+                var single = node[i];
                 if (!single || !single.isConnected)
-                    disconnected = true; 
+                    disconnected = true;
                 if (single && single.remove)
                     single.remove();
             }
@@ -800,7 +852,7 @@ window.JSIS = function () {
         collectorRemove[kye] = collectorTempCaller(true)
 
     };
-    function execReactiveEnd() { 
+    function execReactiveEnd() {
         if (collectorTempCaller != undefined) {
             collectorTempCaller = undefined;
             collectorTempKeys = undefined;
@@ -885,7 +937,7 @@ window.JSIS = function () {
         return syncRequest(url).then(execRequire)
     }
     function component(src, new_element, prop = {}, local_scope = {}) {
-        renderCompReactive(src, new_element, prop, !local_scope, local_scope, false)
+        return renderCompReactive(src, new_element, prop, !local_scope, local_scope, false)
     }
     function check_name(name) {
         name = name.trim();
